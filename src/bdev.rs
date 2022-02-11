@@ -65,25 +65,29 @@ where
     /// TODO: comment
     /// TODO: Error / result
     pub fn register_bdev(&mut self) -> ErrnoResult<()> {
-        let errno = unsafe { spdk_bdev_register(self.as_ptr()) };
+        let errno = unsafe { spdk_bdev_register(self.as_inner_ptr()) };
         errno_result_from_i32((), errno)
     }
 
     /// TODO
     pub fn unregister_bdev(&mut self) {
         unsafe {
-            spdk_bdev_unregister(self.as_ptr(), None, null_mut::<c_void>());
+            spdk_bdev_unregister(
+                self.as_inner_ptr(),
+                None,
+                null_mut::<c_void>(),
+            );
         }
     }
 
     /// Returns a Bdev module for this Bdev.
     pub fn module(&self) -> BdevModule {
-        BdevModule::from_ptr(self.as_ref().module)
+        BdevModule::from_ptr(self.as_inner_ref().module)
     }
 
     /// Returns the name of the module for thos Bdev.
     pub fn module_name(&self) -> &str {
-        unsafe { (*self.as_ref().module).name.as_str() }
+        unsafe { (*self.as_inner_ref().module).name.as_str() }
     }
 
     /// TODO
@@ -94,13 +98,13 @@ where
         if bdev.is_null() {
             None
         } else {
-            Some(Self::from_ptr(bdev))
+            Some(Self::from_inner_ptr(bdev))
         }
     }
 
     /// Returns by a Bdev module who has claimed this Bdev.
-    pub fn claimed_by(&self) -> Option<BdevModule> {
-        let ptr = self.as_ref().internal.claim_module;
+    pub fn claimed_by_module(&self) -> Option<BdevModule> {
+        let ptr = self.as_inner_ref().internal.claim_module;
         if ptr.is_null() {
             None
         } else {
@@ -108,23 +112,38 @@ where
         }
     }
 
+    /// Returns by a name of Bdev module who has claimed this Bdev.
+    pub fn claimed_by(&self) -> Option<String> {
+        self.claimed_by_module().map(|m| m.name().to_string())
+    }
+
     /// Returns Bdev name.
     pub fn name(&self) -> &str {
-        self.as_ref().name.as_str()
+        self.as_inner_ref().name.as_str()
     }
     /// Returns the configured product name.
     pub fn product_name(&self) -> &str {
-        self.as_ref().product_name.as_str()
+        self.as_inner_ref().product_name.as_str()
+    }
+
+    /// Returns Bdev's raw (SPDK representation) UUID.
+    pub fn raw_uuid(&self) -> Uuid {
+        Uuid::new(&self.as_inner_ref().uuid)
+    }
+
+    /// Sets Bdev's raw (SPDK representation) UUID.
+    pub unsafe fn set_raw_uuid(&mut self, uuid: Uuid) {
+        self.as_inner_mut().uuid = uuid.into_raw();
     }
 
     /// Returns Bdev's UUID.
-    pub fn uuid(&self) -> Uuid {
-        Uuid::new(&self.as_ref().uuid)
+    pub fn uuid(&self) -> uuid::Uuid {
+        self.raw_uuid().into()
     }
 
-    /// Sets Bdev's UUID.
-    pub unsafe fn set_uuid(&mut self, uuid: Uuid) {
-        self.as_mut().uuid = uuid.into_raw();
+    /// Returns the UUID of this bdev as a hyphenated string.
+    pub fn uuid_as_string(&self) -> String {
+        self.uuid().to_hyphenated().to_string()
     }
 
     /// TODO
@@ -142,8 +161,9 @@ where
     /// If the alias is already present we return true
     pub fn add_alias(&mut self, alias: &str) -> bool {
         let alias = alias.into_cstring();
-        let ret = unsafe { spdk_bdev_alias_add(self.as_ptr(), alias.as_ptr()) }
-            .to_result(Errno::from_i32);
+        let ret =
+            unsafe { spdk_bdev_alias_add(self.as_inner_ptr(), alias.as_ptr()) }
+                .to_result(Errno::from_i32);
 
         matches!(ret, Err(Errno::EEXIST) | Ok(_))
     }
@@ -151,14 +171,17 @@ where
     /// Removes the given alias from the Bdev.
     pub fn remove_alias(&mut self, alias: &str) {
         unsafe {
-            spdk_bdev_alias_del(self.as_ptr(), alias.into_cstring().as_ptr())
+            spdk_bdev_alias_del(
+                self.as_inner_ptr(),
+                alias.into_cstring().as_ptr(),
+            )
         };
     }
 
     /// Returns a list of Bdev aliases.
     pub fn aliases(&self) -> Vec<String> {
         let mut aliases = Vec::new();
-        let head = unsafe { &*spdk_bdev_get_aliases(self.as_ptr()) };
+        let head = unsafe { &*spdk_bdev_get_aliases(self.as_inner_ptr()) };
         let mut ent_ptr = head.tqh_first;
         while !ent_ptr.is_null() {
             let ent = unsafe { &*ent_ptr };
@@ -171,22 +194,22 @@ where
 
     /// Returns the block size of the underlying device.
     pub fn block_len(&self) -> u32 {
-        self.as_ref().blocklen
+        self.as_inner_ref().blocklen
     }
 
     /// Sets the block size of the underlying device.
     pub unsafe fn set_block_len(&mut self, len: u32) {
-        self.as_mut().blocklen = len;
+        self.as_inner_mut().blocklen = len;
     }
 
     /// Returns number of blocks for this device.
     pub fn num_blocks(&self) -> u64 {
-        self.as_ref().blockcnt
+        self.as_inner_ref().blockcnt
     }
 
     /// Sets number of blocks for this device.
     pub unsafe fn set_num_blocks(&mut self, count: u64) {
-        self.as_mut().blockcnt = count
+        self.as_inner_mut().blockcnt = count
     }
 
     /// Returns the Bdev size in bytes.
@@ -196,42 +219,44 @@ where
 
     /// Returns the alignment of the Bdev.
     pub fn alignment(&self) -> u64 {
-        unsafe { spdk_bdev_get_buf_align(self.as_ptr()) }
+        unsafe { spdk_bdev_get_buf_align(self.as_inner_ptr()) }
     }
 
     /// Returns the required alignment of the Bdev.
     pub fn required_alignment(&self) -> u8 {
-        self.as_ref().required_alignment
+        self.as_inner_ref().required_alignment
     }
 
     /// Returns true if this Bdev is claimed by some other component.
     pub fn is_claimed(&self) -> bool {
-        !self.as_ref().internal.claim_module.is_null()
+        !self.as_inner_ref().internal.claim_module.is_null()
     }
 
     /// Returns true if this Bdev is claimed by the given Bdev module.
     pub fn is_claimed_by_module(&self, module: &BdevModule) -> bool {
-        self.as_ref().internal.claim_module == module.as_ptr()
+        self.as_inner_ref().internal.claim_module == module.as_ptr()
     }
 
     /// Releases a write claim on a block device.
     pub fn release_claim(&self) {
         if self.is_claimed() {
             unsafe {
-                spdk_bdev_module_release_bdev(self.as_ptr());
+                spdk_bdev_module_release_bdev(self.as_inner_ptr());
             }
         }
     }
 
     /// Determines whenever the Bdev supports the requested I/O type.
     pub fn io_type_supported(&self, io_type: IoType) -> bool {
-        unsafe { spdk_bdev_io_type_supported(self.as_ptr(), io_type.into()) }
+        unsafe {
+            spdk_bdev_io_type_supported(self.as_inner_ptr(), io_type.into())
+        }
     }
 
     /// Returns a reference to a data object associated with this Bdev.
     pub fn data<'a>(&self) -> Pin<&'a BdevData> {
         unsafe {
-            let c = self.as_ref().ctxt as *const Container<BdevData>;
+            let c = self.as_inner_ref().ctxt as *const Container<BdevData>;
             Pin::new_unchecked(&(*c).data)
         }
     }
@@ -239,44 +264,47 @@ where
     /// Returns a mutable reference to a data object associated with this Bdev.
     pub fn data_mut<'a>(&mut self) -> Pin<&'a mut BdevData> {
         unsafe {
-            let c = self.as_ref().ctxt as *mut Container<BdevData>;
+            let c = self.as_inner_ref().ctxt as *mut Container<BdevData>;
             Pin::new_unchecked(&mut (*c).data)
         }
     }
 
     /// Returns a pointer to the underlying `spdk_bdev` structure.
-    pub(crate) fn as_ptr(&self) -> *mut spdk_bdev {
+    pub(crate) fn as_inner_ptr(&self) -> *mut spdk_bdev {
         self.inner.as_ptr()
     }
 
     /// Returns a reference to the underlying `spdk_bdev` structure.
-    pub(crate) fn as_ref(&self) -> &spdk_bdev {
+    pub(crate) fn as_inner_ref(&self) -> &spdk_bdev {
         unsafe { self.inner.as_ref() }
     }
 
     /// Returns a mutable reference to the underlying `spdk_bdev` structure.
-    pub(crate) fn as_mut(&mut self) -> &mut spdk_bdev {
+    pub(crate) fn as_inner_mut(&mut self) -> &mut spdk_bdev {
         unsafe { self.inner.as_mut() }
     }
 
-    /// Public version of `as_ptr()`.
-    /// TODO: remove me.
-    pub fn legacy_as_ptr(&self) -> NonNull<spdk_bdev> {
-        self.inner.clone()
-    }
-
     /// Creates a new `Bdev` wrapper from an SPDK structure pointer.
-    pub(crate) fn from_ptr(ptr: *mut spdk_bdev) -> Self {
+    pub(crate) fn from_inner_ptr(ptr: *mut spdk_bdev) -> Self {
         Self {
             inner: NonNull::new(ptr).unwrap(),
             _data: Default::default(),
         }
     }
 
-    /// Public version of `from_ptr()`.
-    /// TODO: remove me.
-    pub fn legacy_from_ptr(ptr: *mut spdk_bdev) -> Self {
-        Self::from_ptr(ptr)
+    /// Public version of `as_inner_ptr()`.
+    pub unsafe fn unsafe_inner_ptr(&self) -> *const spdk_bdev {
+        self.as_inner_ptr()
+    }
+
+    /// Public version of `as_inner_ptr()`.
+    pub unsafe fn unsafe_inner_mut_ptr(&mut self) -> *mut spdk_bdev {
+        self.as_inner_ptr()
+    }
+
+    /// Public version of `from_inner_ptr()`.
+    pub unsafe fn unsafe_from_inner_ptr(ptr: *mut spdk_bdev) -> Self {
+        Self::from_inner_ptr(ptr)
     }
 }
 

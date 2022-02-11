@@ -223,7 +223,7 @@ where
         unsafe {
             (*pcont).bdev.fn_table = &(*pcont).fn_table;
             (*pcont).bdev.ctxt = pcont as *mut c_void;
-            Bdev::from_ptr(&mut (*pcont).bdev)
+            Bdev::from_inner_ptr(&mut (*pcont).bdev)
         }
     }
 }

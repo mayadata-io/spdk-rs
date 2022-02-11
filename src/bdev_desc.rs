@@ -93,7 +93,7 @@ where
     /// A descriptor cannot exist without a Bdev.
     pub fn bdev(&self) -> Bdev<BdevData> {
         let b = unsafe { spdk_bdev_desc_get_bdev(self.as_ptr()) };
-        Bdev::from_ptr(b)
+        Bdev::from_inner_ptr(b)
     }
 
     /// Returns a pointer to the underlying `spdk_bdev_desc` structure.
@@ -190,5 +190,5 @@ unsafe extern "C" fn inner_bdev_event_cb<BdevData>(
     BdevData: BdevOps,
 {
     let ctx = std::mem::transmute::<_, fn(BdevEvent, Bdev<BdevData>)>(ctx);
-    (ctx)(event.into(), Bdev::<BdevData>::from_ptr(bdev));
+    (ctx)(event.into(), Bdev::<BdevData>::from_inner_ptr(bdev));
 }

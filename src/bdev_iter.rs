@@ -67,7 +67,7 @@ where
                 self.bdev = spdk_bdev_next(self.bdev);
 
                 if (*cur).module == self.bdev_module {
-                    return Some(Self::Item::from_ptr(cur));
+                    return Some(Self::Item::from_inner_ptr(cur));
                 }
             }
         }
@@ -112,7 +112,7 @@ where
         } else {
             let cur = self.bdev;
             self.bdev = unsafe { spdk_bdev_next(cur) };
-            Some(Self::Item::from_ptr(cur))
+            Some(Self::Item::from_inner_ptr(cur))
         }
     }
 }

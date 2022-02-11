@@ -85,7 +85,7 @@ impl BdevModule {
     {
         let err = unsafe {
             spdk_bdev_module_claim_bdev(
-                bdev.as_ptr(),
+                bdev.as_inner_ptr(),
                 desc.as_ptr(),
                 self.as_ptr(),
             )

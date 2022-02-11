@@ -44,7 +44,7 @@ where
     ) -> Result<ErrnoResult<()>, Canceled> {
         let (s, r) = oneshot::channel::<ErrnoResult<()>>();
         let ctx = BdevAsyncCallContext {
-            bdev: self.as_ptr(),
+            bdev: self.as_inner_ptr(),
             cb: Some(done_errno_cb),
             arg: cb_arg(s),
         };
@@ -59,7 +59,7 @@ where
 
         unsafe {
             spdk_bdev_unregister(
-                self.as_ptr(),
+                self.as_inner_ptr(),
                 Some(inner_unregister_callback),
                 Box::into_raw(Box::new(s)) as *mut _,
             );
@@ -84,7 +84,7 @@ where
         // done.
         unsafe {
             spdk_bdev_get_device_stat(
-                self.as_ptr(),
+                self.as_inner_ptr(),
                 &mut stat as *mut _,
                 Some(inner_stats_callback),
                 cb_arg(s),

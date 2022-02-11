@@ -47,7 +47,7 @@ where
     /// Returns the block device that this I/O belongs to.
     #[inline]
     pub fn bdev(&self) -> Bdev<BdevData> {
-        Bdev::from_ptr(self.as_ref().bdev)
+        Bdev::from_inner_ptr(self.as_ref().bdev)
     }
 
     /// TODO
@@ -57,7 +57,7 @@ where
     /// * `prod_name`: TODO
     #[inline]
     pub fn bdev_checked(&self, prod_name: &str) -> Bdev<BdevData> {
-        let b = Bdev::from_ptr(self.as_ref().bdev);
+        let b = Bdev::from_inner_ptr(self.as_ref().bdev);
         assert_eq!(b.product_name(), prod_name);
         b
     }
