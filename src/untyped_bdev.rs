@@ -4,7 +4,7 @@ use std::pin::Pin;
 
 /// An alias for a "raw", untyped Bdev type.
 /// TODO: better description.
-pub type DummyBdev = Bdev<()>;
+pub type UntypedBdev = Bdev<()>;
 
 /// Implementation of `BdevOps` for a dummy Bdev type.
 impl BdevOps for () {

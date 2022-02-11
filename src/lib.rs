@@ -34,7 +34,6 @@ mod bdev_iter;
 mod bdev_module;
 mod bdev_ops;
 mod dma;
-mod dummy_bdev;
 mod error;
 mod io_channel;
 mod io_device_traverse;
@@ -44,6 +43,7 @@ mod json_write_context;
 mod nvme;
 mod poller;
 mod thread;
+mod untyped_bdev;
 mod uuid;
 
 pub use crate::{
@@ -64,7 +64,6 @@ pub use crate::{
     },
     bdev_ops::BdevOps,
     dma::{DmaBuf, DmaError},
-    dummy_bdev::DummyBdev,
     error::{SpdkError, SpdkResult},
     io_channel::IoChannel,
     io_device_traverse::{ChannelTraverseStatus, IoDeviceChannelTraverse},
@@ -84,6 +83,7 @@ pub use crate::{
     },
     poller::{Poller, PollerBuilder},
     thread::Thread,
+    untyped_bdev::UntypedBdev,
     uuid::Uuid,
 };
 
