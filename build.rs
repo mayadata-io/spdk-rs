@@ -153,7 +153,6 @@ fn configure_spdk() -> Result<LibraryConfig, Error> {
         "spdk_event_nbd",
         "spdk_event_scsi",
         "spdk_event_sock",
-        "spdk_event_vhost",
         "spdk_event_vmd",
         "spdk_nvmf",
     ])?;
